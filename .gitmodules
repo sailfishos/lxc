@@ -1,0 +1,3 @@
+[submodule "lxc"]
+	path = lxc
+	url = https://github.com/lxc/lxc

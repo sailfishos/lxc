@@ -334,8 +334,8 @@ fi
 %{_bindir}/%{name}-autostart
 %{_sharedstatedir}/%{name}
 %dir %{_sysconfdir}/%{name}
-%config(noreplace) %{_sysconfdir}/%{name}/default.conf
-%config(noreplace) %{_sysconfdir}/sysconfig/%{name}
+%config %{_sysconfdir}/%{name}/default.conf
+%config %{_sysconfdir}/sysconfig/%{name}
 %if %{no_doc} == 0
 %{_mandir}/man1/%{name}-autostart*
 %{_mandir}/*/man1/%{name}-autostart*

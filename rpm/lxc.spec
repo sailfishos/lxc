@@ -206,6 +206,7 @@ autoreconf -v -f -i
 %endif # with_python3
 %if 0%{?with_systemd}
            --with-init-script=systemd \
+           --with-systemdsystemunitdir=%{_unitdir} \
 %else
            --with-init-script=sysvinit \
 %endif # with_systemd

@@ -71,8 +71,6 @@ overhead of full virtualization.
 %package        libs
 Summary:        Runtime library files for %{name}
 Group:          System Environment/Libraries
-# rsync is called in bdev.c, e.g. by lxc-clone
-Requires:       rsync
 %if 0%{?with_systemd}
 Requires(post): systemd
 Requires(preun): systemd

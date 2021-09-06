@@ -2,6 +2,7 @@
 %define no_apparmor 1
 %define no_selinux 1
 %global with_systemd 1
+%global with_seccomp 1
 %define no_lua 1
 
 %if %{no_lua} == 0
@@ -10,18 +11,15 @@
 %global luapkgdir %{_datadir}/lua/%{luaver}
 %endif
 
-%define source_dir .
-
 # for pre-releases
 #global prerel
 %global commit a467a845443054a9f75d65cf0a73bb4d5ff2ab71
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           lxc
-Version:        3.0.1
+Version:        4.0.10
 Release:        1
 Summary:        Linux Resource Containers
-Group:          Applications/System
 License:        LGPLv2+ and GPLv2
 URL:            http://linuxcontainers.org
 Source:         %{name}-%{version}.tar.bz2
@@ -70,7 +68,6 @@ overhead of full virtualization.
 
 %package        libs
 Summary:        Runtime library files for %{name}
-Group:          System Environment/Libraries
 %if 0%{?with_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -92,7 +89,6 @@ The %{name}-libs package contains libraries for running %{name} applications.
 %if 0%{?with_python3}
 %package        -n python%{python3_pkgversion}-%{name}
 Summary:        Python binding for %{name}
-Group:          System Environment/Libraries
 
 %description    -n python%{python3_pkgversion}-%{name}
 Linux Resource Containers provide process and resource isolation without the
@@ -107,7 +103,6 @@ The python%{python3_pkgversion}-%{name} package contains the Python3 binding for
 %if %{no_lua} == 0
 %package        -n lua-%{name}
 Summary:        Lua binding for %{name}
-Group:          System Environment/Libraries
 Requires:       lua-filesystem
 
 %description    -n lua-%{name}
@@ -122,7 +117,6 @@ The lua-%{name} package contains the Lua binding for %{name}.
 
 %package        templates
 Summary:        Templates for %{name}
-Group:          System Environment/Libraries
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
 # Note: Requirements for the template scripts (busybox, dpkg,
 # debootstrap, rsync, openssh-server, dhclient, apt, pacman, zypper,
@@ -143,7 +137,6 @@ The %{name}-templates package contains templates for creating containers.
 
 %package        devel
 Summary:        Development files for %{name}
-Group:          Development/Libraries
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
 Requires:       pkgconfig
 
@@ -157,7 +150,6 @@ developing applications that use %{name}.
 #%if %{no_doc} == 0
 %package        doc
 Summary:        Documentation for %{name}
-Group:          Documentation
 BuildArch:      noarch
 
 %description    doc
@@ -165,13 +157,12 @@ This package contains documentation for %{name}.
 #%endif
 
 %prep
-%setup -q -n %{name}-%{version}/%{name}
+%autosetup -p1 -n %{name}-%{version}/%{name}
 
 %build
 CFLAGS="$CFLAGS -std=c99 -D_GNU_SOURCE"
-cd %{source_dir}
-autoreconf -v -f -i
-%configure --with-distro=fedora \
+%reconfigure \
+           --with-distro=fedora \
            --disable-silent-rules \
            --docdir=%{_pkgdocdir} \
 %if %{no_doc} == 0
@@ -216,12 +207,11 @@ autoreconf -v -f -i
 sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
 sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 
-make %{?_smp_mflags}
+%make_build
 
 
 %install
-cd %{source_dir}
-make install DESTDIR=%{buildroot}
+%make_install
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}
 %if %{no_lua} == 0
 chmod -x %{buildroot}%{luapkgdir}/lxc.lua
@@ -248,7 +238,6 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %endif
 
 %check
-cd %{source_dir}
 make check
 
 

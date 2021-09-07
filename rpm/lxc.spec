@@ -58,6 +58,7 @@ Obsoletes:      lxc-extra < 1.1.5-3
 %if 0%{?prerel:1}
 BuildRequires:  autoconf automake
 %endif
+Requires:       lxc-libs = %{version}-%{release}
 
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 

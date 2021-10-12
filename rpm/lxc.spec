@@ -42,7 +42,7 @@ BuildRequires:  pkgconfig(lua)
 BuildRequires:  pkgconfig(python3) >= 3.2
 %endif
 # with_python3
-BuildRequires:  systemd
+BuildRequires:  pkgconfig(systemd)
 # lxc-extra subpackage not needed anymore, lxc-ls has been rewriten in
 # C and does not depend on the Python3 binding anymore
 Provides:       lxc-extra = %{version}-%{release}

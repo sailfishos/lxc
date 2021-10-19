@@ -1,11 +1,10 @@
-%define no_doc 1
-%define no_apparmor 1
-%define no_selinux 1
-%global with_systemd 1
-%global with_seccomp 1
-%define no_lua 1
+%bcond_without selinux
+%bcond_without seccomp
+%bcond_with lua
+%bcond_with doc
+%bcond_with python3
 
-%if %{no_lua} == 0
+%if %{with lua}
 %global luaver 5.1
 %global lualibdir %{_libdir}/lua/%{luaver}
 %global luapkgdir %{_datadir}/lua/%{luaver}
@@ -23,34 +22,27 @@ Summary:        Linux Resource Containers
 License:        LGPLv2+ and GPLv2
 URL:            http://linuxcontainers.org
 Source:         %{name}-%{version}.tar.bz2
-%if %{no_doc} == 0
+%if %{with doc}
 BuildRequires:  docbook2X
 BuildRequires:  doxygen
 %endif
 BuildRequires:  kernel-headers
-%if %{no_selinux} == 0
+%if %{with selinux}
 BuildRequires:  libselinux-devel
 %endif
-%if 0%{?with_seccomp}
+%if %{with seccomp}
 BuildRequires:  pkgconfig(libseccomp)
-%endif # with_seccomp
+%endif
 BuildRequires:  libcap-devel
 BuildRequires:  libtool
-%if %{no_lua} == 0
+%if %{with lua}
 BuildRequires:  pkgconfig(lua)
 %endif
-%if 0%{?with_python3}
+%if %{with python3}
 BuildRequires:  pkgconfig(python3) >= 3.2
-%if 0%{?rhel} == 7
-BuildRequires:  python34-setuptools
 %endif
-%endif # with_python3
-%if 0%{?with_systemd}
-BuildRequires:  systemd
-%endif # with_systemd
-%if 0%{?fedora} || 0%{?rhel} >= 7
-BuildRequires:  pkgconfig(bash-completion)
-%endif
+# with_python3
+BuildRequires:  pkgconfig(systemd)
 # lxc-extra subpackage not needed anymore, lxc-ls has been rewriten in
 # C and does not depend on the Python3 binding anymore
 Provides:       lxc-extra = %{version}-%{release}
@@ -69,15 +61,9 @@ overhead of full virtualization.
 
 %package        libs
 Summary:        Runtime library files for %{name}
-%if 0%{?with_systemd}
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-%else
-Requires(post): chkconfig
-Requires(preun): initscripts, chkconfig
-Requires(postun): initscripts
-%endif # with_systemd
 
 
 %description    libs
@@ -87,7 +73,7 @@ overhead of full virtualization.
 The %{name}-libs package contains libraries for running %{name} applications.
 
 
-%if 0%{?with_python3}
+%if %{with python3}
 %package        -n python%{python3_pkgversion}-%{name}
 Summary:        Python binding for %{name}
 
@@ -98,10 +84,11 @@ overhead of full virtualization.
 The python%{python3_pkgversion}-%{name} package contains the Python3 binding for %{name}.
 
 %global __provides_exclude %{?__provides_exclude:%__provides_exclude|}_lxc\\..*\\.so
-%endif # with_python3
+%endif
 
 
-%if %{no_lua} == 0
+
+%if %{with lua}
 %package        -n lua-%{name}
 Summary:        Lua binding for %{name}
 Requires:       lua-filesystem
@@ -148,14 +135,14 @@ overhead of full virtualization.
 The %{name}-devel package contains libraries and header files for
 developing applications that use %{name}.
 
-#%if %{no_doc} == 0
+%if %{with doc}
 %package        doc
 Summary:        Documentation for %{name}
 BuildArch:      noarch
 
 %description    doc
 This package contains documentation for %{name}.
-#%endif
+%endif
 
 %prep
 %autosetup -p1 -n %{name}-%{version}/%{name}
@@ -166,7 +153,7 @@ CFLAGS="$CFLAGS -std=c99 -D_GNU_SOURCE"
            --with-distro=fedora \
            --disable-silent-rules \
            --docdir=%{_pkgdocdir} \
-%if %{no_doc} == 0
+%if %{with doc}
            --enable-doc \
            --enable-api-docs \
 %else
@@ -176,30 +163,26 @@ CFLAGS="$CFLAGS -std=c99 -D_GNU_SOURCE"
            --disable-rpath \
            --disable-apparmor \
            --disable-cgmanager \
-%if %{no_selinux} == 0
+%if %{with selinux}
            --enable-selinux \
 %else
            --disable-selinux \
 %endif
-%if 0%{?with_seccomp}
+%if %{with seccomp}
            --enable-seccomp \
-%endif # with_seccomp
-%if %{no_lua} == 0
+%endif
+%if %{with lua}
            --enable-lua \
 %else
            --disable-lua \
 %endif
-%if 0%{?with_python3}
+%if %{with python3}
            --enable-python \
 %else
            --disable-python \
-%endif # with_python3
-%if 0%{?with_systemd}
+%endif
            --with-init-script=systemd \
            --with-systemdsystemunitdir=%{_unitdir} \
-%else
-           --with-init-script=sysvinit \
-%endif # with_systemd
            --disable-werror \
            --disable-static
 # intentionally blank line
@@ -214,15 +197,18 @@ sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 %install
 %make_install
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}
-%if %{no_lua} == 0
+%if %{with lua}
 chmod -x %{buildroot}%{luapkgdir}/lxc.lua
 %endif
 
 mkdir -p %{buildroot}%{_pkgdocdir}
 cp -a AUTHORS README %{!?_licensedir:COPYING} %{buildroot}%{_pkgdocdir}
 mkdir -p %{buildroot}%{_pkgdocdir}/api
-%if %{no_doc} == 0
+%if %{with doc}
 cp -a doc/api/html/* %{buildroot}%{_pkgdocdir}/api/
+%else
+# Remove any doc package leftovers
+rm -rf %{buildroot}%{_pkgdocdir}/examples
 %endif
 
 # cache dir
@@ -232,7 +218,7 @@ mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
 rm -rf %{buildroot}%{_libdir}/liblxc.la
 
 
-%if %{no_selinux} == 1
+%if %{without selinux}
 # remove selinux files? TODO
 rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.if
 rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
@@ -244,49 +230,28 @@ make check
 
 %post libs
 /sbin/ldconfig
-%if 0%{?with_systemd}
 %systemd_post %{name}-net.service
 %systemd_post %{name}.service
 %systemd_post %{name}@.service
-%else
-/sbin/chkconfig --add %{name}-net
-/sbin/chkconfig --add %{name}
-%endif # with_systemd
 
 
 %preun libs
-%if 0%{?with_systemd}
 %systemd_preun %{name}-net.service
 %systemd_preun %{name}.service
 %systemd_preun %{name}@.service
-%else
-if [ $1 -eq 0 ]; then
-        /sbin/service %{name}-net stop > /dev/null 2>&1
-        /sbin/chkconfig --del %{name}-net
-        /sbin/service %{name} stop > /dev/null 2>&1
-        /sbin/chkconfig --del %{name}
-fi
-%endif # with_systemd
 
 
 %postun libs
 /sbin/ldconfig
-%if 0%{?with_systemd}
 %systemd_postun %{name}-net.service
 %systemd_postun %{name}.service
 %systemd_postun %{name}@.service
-%else
-if [ $1 -ge 1 ]; then
-        /sbin/service %{name}-net condrestart > /dev/null 2>&1 || :
-        /sbin/service %{name} condrestart > /dev/null 2>&1 || :
-fi
-%endif # with_systemd
 
 
 %files
 %{_bindir}/%{name}-*
 %exclude %{_bindir}/%{name}-autostart
-%if %{no_doc} == 0
+%if %{with doc}
 %{_mandir}/man1/%{name}*
 %{_mandir}/*/man1/%{name}*
 # in lxc-libs:
@@ -312,7 +277,7 @@ fi
 %dir %{_datadir}/%{name}/config
 %{_datadir}/%{name}/hooks
 %{_datadir}/%{name}/%{name}-patch.py*
-%if %{no_selinux} == 0
+%if %{with selinux}
 %{_datadir}/%{name}/selinux
 %endif
 %{_libdir}/liblxc.so.*
@@ -325,7 +290,7 @@ fi
 %dir %{_sysconfdir}/%{name}
 %config %{_sysconfdir}/%{name}/default.conf
 %config %{_sysconfdir}/sysconfig/%{name}
-%if %{no_doc} == 0
+%if %{with doc}
 %{_mandir}/man1/%{name}-autostart*
 %{_mandir}/*/man1/%{name}-autostart*
 %{_mandir}/man1/%{name}-user-nic*
@@ -343,24 +308,20 @@ fi
 %else
 %{_pkgdocdir}/COPYING
 %endif
-%if 0%{?with_systemd}
 %{_unitdir}/%{name}.service
 %{_unitdir}/%{name}@.service
 %{_unitdir}/%{name}-net.service
-%else
-%{_sysconfdir}/rc.d/init.d/%{name}
-%{_sysconfdir}/rc.d/init.d/%{name}-net
-%endif # with_systemd
 %dir %{_localstatedir}/cache/%{name}
 
 
-%if 0%{?with_python3}
+%if %{with python3}
 %files -n python%{python3_pkgversion}-%{name}
 %{python3_sitearch}/*
-%endif # with_python3
+%endif
+# with_python3
 
 
-%if %{no_lua} == 0
+%if %{with lua}
 %files -n lua-%{name}
 %{lualibdir}/%{name}
 %{luapkgdir}/%{name}.lua
@@ -376,7 +337,7 @@ fi
 %{_includedir}/lxc
 %{_libdir}/liblxc.so
 
-#%if %{no_doc} == 0
+%if %{with doc}
 %files doc
 %dir %{_pkgdocdir}
 # README, AUTHORS and COPYING intentionally duplicated because -doc
@@ -385,4 +346,4 @@ fi
 %if 0%{?_licensedir:1}
 %license COPYING
 %endif
-#%endif
+%endif

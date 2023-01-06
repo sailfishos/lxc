@@ -16,12 +16,13 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           lxc
-Version:        4.0.10
+Version:        5.0.0
 Release:        1
 Summary:        Linux Resource Containers
 License:        LGPLv2+ and GPLv2
 URL:            http://linuxcontainers.org
 Source:         %{name}-%{version}.tar.bz2
+BuildRequires:  meson
 %if %{with doc}
 BuildRequires:  docbook2X
 BuildRequires:  doxygen
@@ -34,7 +35,6 @@ BuildRequires:  libselinux-devel
 BuildRequires:  pkgconfig(libseccomp)
 %endif
 BuildRequires:  libcap-devel
-BuildRequires:  libtool
 %if %{with lua}
 BuildRequires:  pkgconfig(lua)
 %endif
@@ -54,6 +54,8 @@ Requires:       lxc-libs = %{version}-%{release}
 
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
+Patch0:         0001-Allow-building-lxc-without-init.lxc.static.patch
+
 %description
 Linux Resource Containers provide process and resource isolation without the
 overhead of full virtualization.
@@ -64,7 +66,6 @@ Summary:        Runtime library files for %{name}
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-
 
 %description    libs
 Linux Resource Containers provide process and resource isolation without the
@@ -148,61 +149,36 @@ This package contains documentation for %{name}.
 %autosetup -p1 -n %{name}-%{version}/%{name}
 
 %build
-CFLAGS="$CFLAGS -std=c99 -D_GNU_SOURCE"
-%reconfigure \
-           --with-distro=fedora \
-           --disable-silent-rules \
-           --docdir=%{_pkgdocdir} \
+%meson \
+           -Ddoc-path=%{_pkgdocdir} \
 %if %{with doc}
-           --enable-doc \
-           --enable-api-docs \
+           -Dman=true \
 %else
-           --disable-doc \
-           --disable-api-docs \
+           -Dman=false \
 %endif
-           --disable-rpath \
-           --disable-apparmor \
-           --disable-cgmanager \
+           -Dapparmor=true \
 %if %{with selinux}
-           --enable-selinux \
+           -Dselinux=true \
 %else
-           --disable-selinux \
+           -Dselinux=false \
 %endif
 %if %{with seccomp}
-           --enable-seccomp \
+           -Dseccomp=true \
 %endif
-%if %{with lua}
-           --enable-lua \
-%else
-           --disable-lua \
-%endif
-%if %{with python3}
-           --enable-python \
-%else
-           --disable-python \
-%endif
-           --with-init-script=systemd \
-           --with-systemdsystemunitdir=%{_unitdir} \
-           --disable-werror \
-           --disable-static
-# intentionally blank line
+           -Dinit-script=systemd \
+           -Dstatic=false
 
-# fix rpath
-sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
-sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
-
-%make_build
-
+%meson_build
 
 %install
-%make_install
+%meson_install
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}
 %if %{with lua}
 chmod -x %{buildroot}%{luapkgdir}/lxc.lua
 %endif
 
 mkdir -p %{buildroot}%{_pkgdocdir}
-cp -a AUTHORS README %{!?_licensedir:COPYING} %{buildroot}%{_pkgdocdir}
+cp -a AUTHORS %{!?_licensedir:COPYING} %{buildroot}%{_pkgdocdir}
 mkdir -p %{buildroot}%{_pkgdocdir}/api
 %if %{with doc}
 cp -a doc/api/html/* %{buildroot}%{_pkgdocdir}/api/
@@ -214,29 +190,23 @@ rm -rf %{buildroot}%{_pkgdocdir}/examples
 # cache dir
 mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
 
-# remove libtool .la file
-rm -rf %{buildroot}%{_libdir}/liblxc.la
-
-
 %if %{without selinux}
 # remove selinux files? TODO
 rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.if
 rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %endif
 
-%check
-make check
-
-
 %post libs
 /sbin/ldconfig
 %systemd_post %{name}-net.service
+%systemd_post %{name}-monitord.service
 %systemd_post %{name}.service
 %systemd_post %{name}@.service
 
 
 %preun libs
 %systemd_preun %{name}-net.service
+%systemd_preun %{name}-monitord.service
 %systemd_preun %{name}.service
 %systemd_preun %{name}@.service
 
@@ -244,6 +214,7 @@ make check
 %postun libs
 /sbin/ldconfig
 %systemd_postun %{name}-net.service
+%systemd_postun %{name}-monitord.service
 %systemd_postun %{name}.service
 %systemd_postun %{name}@.service
 
@@ -261,15 +232,10 @@ make check
 %exclude %{_mandir}/*/man1/%{name}-user-nic*
 %endif
 %{_datadir}/%{name}/%{name}.functions
-%if 0%{?fedora} || 0%{?rhel} >= 7
 %dir %{_datadir}/bash-completion
 %dir %{_datadir}/bash-completion/completions
-%{_datadir}/bash-completion/completions/%{name}
-%else
-%dir %{_sysconfdir}/bash_completion.d
-%{_sysconfdir}/bash_completion.d/%{name}
-%endif
-
+%{_datadir}/bash-completion/completions/_%{name}
+%{_datadir}/bash-completion/completions/%{name}*
 
 %files libs
 %dir %{_datadir}/%{name}
@@ -302,7 +268,6 @@ make check
 %endif
 %dir %{_pkgdocdir}
 %{_pkgdocdir}/AUTHORS
-%{_pkgdocdir}/README
 %if 0%{?_licensedir:1}
 %license COPYING
 %else
@@ -311,6 +276,7 @@ make check
 %{_unitdir}/%{name}.service
 %{_unitdir}/%{name}@.service
 %{_unitdir}/%{name}-net.service
+%{_unitdir}/%{name}-monitord.service
 %dir %{_localstatedir}/cache/%{name}
 
 
@@ -336,11 +302,12 @@ make check
 %{_libdir}/pkgconfig/%{name}.pc
 %{_includedir}/lxc
 %{_libdir}/liblxc.so
+%{_libdir}/liblxc_static.a
 
 %if %{with doc}
 %files doc
 %dir %{_pkgdocdir}
-# README, AUTHORS and COPYING intentionally duplicated because -doc
+# AUTHORS and COPYING intentionally duplicated because -doc
 # can be installed on its own.
 %{_pkgdocdir}/*
 %if 0%{?_licensedir:1}

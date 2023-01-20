@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Franz-Josef Haider <franz.haider@jolla.com>
+Date: Thu, 5 Jan 2023 14:42:38 +0000
+Subject: [PATCH 1/1] Allow building lxc without init.lxc.static
+
+---
+ meson.build             |  1 +
+ meson_options.txt       |  3 +++
+ src/lxc/cmd/meson.build | 24 +++++++++++++-----------
+ 3 files changed, 17 insertions(+), 11 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index 43362d37aa74f7e72564336ddfc79fc8aef1769e..61d96f527ba1592bc6e455e64cf8c6eda85c79b5 100644
+--- a/meson.build
++++ b/meson.build
+@@ -135,6 +135,7 @@ cgrouppattern = get_option('cgroup-pattern')
+ coverity = get_option('coverity-build')
+ init_script = get_option('init-script')
+ sanitize = get_option('b_sanitize')
++static = get_option('static')
+ want_examples = get_option('examples')
+ want_io_uring = get_option('io-uring-event-loop')
+ want_pam_cgroup = get_option('pam-cgroup')
+diff --git a/meson_options.txt b/meson_options.txt
+index 8f9b4e118502911639f34269cf61edbd43c11eca..f676ae7812311dadb7e2f556e91ff534fd614b12 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -62,6 +62,9 @@ option('selinux', type: 'boolean', value: 'true',
+ option('tests', type: 'boolean', value: 'false',
+        description: 'build and install tests')
+ 
++option('static', type: 'boolean', value: 'true',
++       description: 'build lxc.init.static')
++
+ # Paths
+ # was --apparmor-cache-dir in autotools
+ option('apparmor-cache-path', type: 'string', value: 'cache/lxc/apparmor',
+diff --git a/src/lxc/cmd/meson.build b/src/lxc/cmd/meson.build
+index f84269ecbcab6d3d1e1b83d0d35fd5d8a3a4cd79..9468af9ef1914165ac3bf0584cdb8ded4d54de7e 100644
+--- a/src/lxc/cmd/meson.build
++++ b/src/lxc/cmd/meson.build
+@@ -60,17 +60,19 @@ cmd_lxc_update_config = configure_file(
+     output: 'lxc-update-config')
+ install_data(join_paths(project_build_root, 'src/lxc/cmd/lxc-update-config'), install_dir: bindir)
+ 
+-if sanitize == 'none'
+-    cmd_programs += executable(
+-        'init.lxc.static',
+-        cmd_lxc_init_sources,
+-        include_directories: liblxc_includes,
+-        link_with: [liblxc_static],
+-        link_args: ['-static'],
+-        c_args: ['-DNO_LXC_CONF'],
+-        dependencies: [libcap_static],
+-        install_dir: sbindir,
+-        install: true)
++if static == true
++  if sanitize == 'none'
++      cmd_programs += executable(
++          'init.lxc.static',
++          cmd_lxc_init_sources,
++          include_directories: liblxc_includes,
++          link_with: [liblxc_static],
++          link_args: ['-static'],
++          c_args: ['-DNO_LXC_CONF'],
++          dependencies: [libcap_static],
++          install_dir: sbindir,
++          install: true)
++  endif
+ endif
+ 
+ cmd_programs += executable(

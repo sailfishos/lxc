@@ -54,8 +54,6 @@ Requires:       lxc-libs = %{version}-%{release}
 
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
-Patch0:         0001-Allow-building-lxc-without-init.lxc.static.patch
-
 %description
 Linux Resource Containers provide process and resource isolation without the
 overhead of full virtualization.
@@ -165,8 +163,7 @@ This package contains documentation for %{name}.
 %if %{with seccomp}
            -Dseccomp=true \
 %endif
-           -Dinit-script=systemd \
-           -Dstatic=false
+           -Dinit-script=systemd
 
 %meson_build
 
@@ -302,7 +299,7 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %{_libdir}/pkgconfig/%{name}.pc
 %{_includedir}/lxc
 %{_libdir}/liblxc.so
-%{_libdir}/liblxc_static.a
+%{_libdir}/liblxc.a
 
 %if %{with doc}
 %files doc

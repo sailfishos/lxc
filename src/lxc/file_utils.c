@@ -650,6 +650,7 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 	    unsigned int resolve_flags, mode_t mode)
 {
 	__do_close int fd = -EBADF;
+#if 0
 	struct lxc_open_how how = {
 		.flags		= o_flags,
 		.mode		= mode,
@@ -662,6 +663,7 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 
 	if (errno != ENOSYS)
 		return -errno;
+#endif
 
 	fd = openat(dfd, path, o_flags, mode);
 	if (fd < 0)

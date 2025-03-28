@@ -16,11 +16,11 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           lxc
-Version:        5.0.0
+Version:        6.0.3
 Release:        1
 Summary:        Linux Resource Containers
 License:        LGPLv2+ and GPLv2
-URL:            http://linuxcontainers.org
+URL:            https://github.com/sailfishos/lxc
 Source:         %{name}-%{version}.tar.bz2
 BuildRequires:  meson
 %if %{with doc}
@@ -42,6 +42,7 @@ BuildRequires:  pkgconfig(lua)
 BuildRequires:  pkgconfig(python3) >= 3.2
 %endif
 # with_python3
+BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(systemd)
 # lxc-extra subpackage not needed anymore, lxc-ls has been rewriten in
 # C and does not depend on the Python3 binding anymore
@@ -245,7 +246,13 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %endif
 %{_libdir}/liblxc.so.*
 %{_libdir}/%{name}
-%{_libexecdir}/%{name}
+%dir %{_libexecdir}/%{name}
+%{_libexecdir}/%{name}/hooks/*
+%{_libexecdir}/%{name}/lxc-apparmor-load
+%{_libexecdir}/%{name}/lxc-containers
+%{_libexecdir}/%{name}/lxc-monitord
+%{_libexecdir}/%{name}/lxc-net
+%attr(4755,root,root) %{_libexecdir}/%{name}/lxc-user-nic
 # fixme: should be in libexecdir?
 %{_sbindir}/init.%{name}
 %{_bindir}/%{name}-autostart

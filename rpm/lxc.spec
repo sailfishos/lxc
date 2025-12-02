@@ -185,6 +185,9 @@ cp -a doc/api/html/* %{buildroot}%{_pkgdocdir}/api/
 rm -rf %{buildroot}%{_pkgdocdir}/examples
 %endif
 
+# Remove static library
+find %{buildroot} -type f -name '*.a' -delete
+
 # cache dir
 mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
 
@@ -306,7 +309,6 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %{_libdir}/pkgconfig/%{name}.pc
 %{_includedir}/lxc
 %{_libdir}/liblxc.so
-%{_libdir}/liblxc.a
 
 %if %{with doc}
 %files doc

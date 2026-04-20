@@ -16,7 +16,7 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           lxc
-Version:        6.0.3
+Version:        6.0.6
 Release:        1
 Summary:        Linux Resource Containers
 License:        LGPLv2+ and GPLv2

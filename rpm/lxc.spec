@@ -202,14 +202,21 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %systemd_post %{name}-net.service
 %systemd_post %{name}-monitord.service
 %systemd_post %{name}.service
-%systemd_post %{name}@.service
+
+# lxc@.service is an instance template without a DefaultInstance. Presetting
+# the bare template enables lxc@multi-user.service from multi-user.target,
+# which fails because there is no "multi-user" container.
+bad_link=%{_sysconfdir}/systemd/system/multi-user.target.wants/%{name}@.service
+if [ -L "$bad_link" ]; then
+    systemctl --no-reload disable %{name}@.service >/dev/null 2>&1 || :
+    systemctl reset-failed %{name}@multi-user.service >/dev/null 2>&1 || :
+fi
 
 
 %preun libs
 %systemd_preun %{name}-net.service
 %systemd_preun %{name}-monitord.service
 %systemd_preun %{name}.service
-%systemd_preun %{name}@.service
 
 
 %postun libs
@@ -217,7 +224,6 @@ rm %{buildroot}/%{_datarootdir}/lxc/selinux/lxc.te
 %systemd_postun %{name}-net.service
 %systemd_postun %{name}-monitord.service
 %systemd_postun %{name}.service
-%systemd_postun %{name}@.service
 
 
 %files
